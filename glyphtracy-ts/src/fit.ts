@@ -145,6 +145,184 @@ function fitSingleCubicWithTangents(
   return { p0, p1: c1, p2: c2, p3 };
 }
 
+function fitSingleCubicWithPartialConstraints(
+  pointsXy: number[][],
+  tanStart: number[],
+  tanEnd: number[],
+  args: {
+    freeStartHandle: boolean;
+    freeEndHandle: boolean;
+    segmentBalanceWeight: number;
+    handleShrinkWeight: number;
+  },
+): Cubic {
+  const p0 = pointsXy[0];
+  const p3 = pointsXy[pointsXy.length - 1];
+  const t0 = unit(tanStart);
+  const t3 = unit(tanEnd);
+  const tValues = chordTValues(pointsXy);
+
+  let nextVar = 0;
+  let iAlpha = -1;
+  let iBeta = -1;
+  let iC1x = -1;
+  let iC1y = -1;
+  let iC2x = -1;
+  let iC2y = -1;
+
+  if (args.freeStartHandle) {
+    iC1x = nextVar;
+    iC1y = nextVar + 1;
+    nextVar += 2;
+  } else {
+    iAlpha = nextVar;
+    nextVar += 1;
+  }
+
+  if (args.freeEndHandle) {
+    iC2x = nextVar;
+    iC2y = nextVar + 1;
+    nextVar += 2;
+  } else {
+    iBeta = nextVar;
+    nextVar += 1;
+  }
+
+  const nVars = nextVar;
+  const rows: number[][] = [];
+  const rhs: number[] = [];
+
+  for (let i = 1; i < pointsXy.length - 1; i += 1) {
+    const ti = tValues[i];
+    const q = pointsXy[i];
+    const mt = 1 - ti;
+    const b0 = mt * mt * mt;
+    const b1 = 3 * mt * mt * ti;
+    const b2 = 3 * mt * ti * ti;
+    const b3 = ti * ti * ti;
+
+    let constX = b0 * p0[0] + b3 * p3[0];
+    let constY = b0 * p0[1] + b3 * p3[1];
+    if (!args.freeStartHandle) {
+      constX += b1 * p0[0];
+      constY += b1 * p0[1];
+    }
+    if (!args.freeEndHandle) {
+      constX += b2 * p3[0];
+      constY += b2 * p3[1];
+    }
+
+    const rowX = Array.from({ length: nVars }, () => 0);
+    const rowY = Array.from({ length: nVars }, () => 0);
+
+    if (args.freeStartHandle) {
+      rowX[iC1x] = b1;
+      rowY[iC1y] = b1;
+    } else {
+      rowX[iAlpha] = b1 * t0[0];
+      rowY[iAlpha] = b1 * t0[1];
+    }
+
+    if (args.freeEndHandle) {
+      rowX[iC2x] = b2;
+      rowY[iC2y] = b2;
+    } else {
+      rowX[iBeta] = -b2 * t3[0];
+      rowY[iBeta] = -b2 * t3[1];
+    }
+
+    rows.push(rowX);
+    rhs.push(q[0] - constX);
+    rows.push(rowY);
+    rhs.push(q[1] - constY);
+  }
+
+  if (
+    args.segmentBalanceWeight > 0 &&
+    !args.freeStartHandle &&
+    !args.freeEndHandle
+  ) {
+    const w = Math.sqrt(args.segmentBalanceWeight);
+    const row = Array.from({ length: nVars }, () => 0);
+    row[iAlpha] = w;
+    row[iBeta] = -w;
+    rows.push(row);
+    rhs.push(0);
+  }
+
+  if (args.handleShrinkWeight > 0) {
+    const w = Math.sqrt(args.handleShrinkWeight);
+
+    if (args.freeStartHandle) {
+      const rowX = Array.from({ length: nVars }, () => 0);
+      rowX[iC1x] = w;
+      rows.push(rowX);
+      rhs.push(w * p0[0]);
+
+      const rowY = Array.from({ length: nVars }, () => 0);
+      rowY[iC1y] = w;
+      rows.push(rowY);
+      rhs.push(w * p0[1]);
+    } else {
+      const row = Array.from({ length: nVars }, () => 0);
+      row[iAlpha] = w;
+      rows.push(row);
+      rhs.push(0);
+    }
+
+    if (args.freeEndHandle) {
+      const rowX = Array.from({ length: nVars }, () => 0);
+      rowX[iC2x] = w;
+      rows.push(rowX);
+      rhs.push(w * p3[0]);
+
+      const rowY = Array.from({ length: nVars }, () => 0);
+      rowY[iC2y] = w;
+      rows.push(rowY);
+      rhs.push(w * p3[1]);
+    } else {
+      const row = Array.from({ length: nVars }, () => 0);
+      row[iBeta] = w;
+      rows.push(row);
+      rhs.push(0);
+    }
+  }
+
+  let c1 = p0.slice();
+  let c2 = p3.slice();
+  if (rows.length > 0) {
+    const x = solveLeastSquares(rows, rhs);
+
+    if (args.freeStartHandle) {
+      c1 = [x[iC1x], x[iC1y]];
+    } else {
+      const alpha = Math.max(0, x[iAlpha] ?? 0);
+      c1 = [p0[0] + alpha * t0[0], p0[1] + alpha * t0[1]];
+    }
+
+    if (args.freeEndHandle) {
+      c2 = [x[iC2x], x[iC2y]];
+    } else {
+      const beta = Math.max(0, x[iBeta] ?? 0);
+      c2 = [p3[0] - beta * t3[0], p3[1] - beta * t3[1]];
+    }
+  }
+
+  return { p0, p1: c1, p2: c2, p3 };
+}
+
+function fitSingleCubicUnconstrained(
+  pointsXy: number[][],
+  args: { handleShrinkWeight: number },
+): Cubic {
+  return fitSingleCubicWithPartialConstraints(pointsXy, [1, 0], [1, 0], {
+    freeStartHandle: true,
+    freeEndHandle: true,
+    segmentBalanceWeight: 0,
+    handleShrinkWeight: args.handleShrinkWeight,
+  });
+}
+
 function segmentMaxError(cubic: Cubic, pointsXy: number[][]): [number, number] {
   const tValues = chordTValues(pointsXy);
   let maxError = 0;
@@ -169,12 +347,29 @@ function splitAndRefit(
     maxDepth: number;
     segmentBalanceWeight: number;
     handleShrinkWeight: number;
+    unconstrainedHandles: boolean;
+    freeStartHandle: boolean;
+    freeEndHandle: boolean;
   },
 ): FittedSegment[] {
-  const cubic = fitSingleCubicWithTangents(pointsXy, tanStart, tanEnd, {
-    segmentBalanceWeight: args.segmentBalanceWeight,
-    handleShrinkWeight: args.handleShrinkWeight,
-  });
+  let cubic: Cubic;
+  if (args.unconstrainedHandles) {
+    cubic = fitSingleCubicUnconstrained(pointsXy, {
+      handleShrinkWeight: args.handleShrinkWeight,
+    });
+  } else if (args.freeStartHandle || args.freeEndHandle) {
+    cubic = fitSingleCubicWithPartialConstraints(pointsXy, tanStart, tanEnd, {
+      freeStartHandle: args.freeStartHandle,
+      freeEndHandle: args.freeEndHandle,
+      segmentBalanceWeight: args.segmentBalanceWeight,
+      handleShrinkWeight: args.handleShrinkWeight,
+    });
+  } else {
+    cubic = fitSingleCubicWithTangents(pointsXy, tanStart, tanEnd, {
+      segmentBalanceWeight: args.segmentBalanceWeight,
+      handleShrinkWeight: args.handleShrinkWeight,
+    });
+  }
   const [maxError, splitIxRaw] = segmentMaxError(cubic, pointsXy);
 
   if (maxError <= args.tolerance || args.maxDepth <= 0 || pointsXy.length < 8) {
@@ -192,10 +387,12 @@ function splitAndRefit(
   const leftFitted = splitAndRefit(left, tanStart, splitTangent, {
     ...args,
     maxDepth: args.maxDepth - 1,
+    freeEndHandle: false,
   });
   const rightFitted = splitAndRefit(right, splitTangent, tanEnd, {
     ...args,
     maxDepth: args.maxDepth - 1,
+    freeStartHandle: false,
   });
   return leftFitted.concat(rightFitted);
 }
@@ -397,6 +594,7 @@ export function fitCurveRun(
     contourIndex: number;
     continuity: string | null;
     axisExtrema: Set<string>;
+    reasonTags?: Set<string>;
   }>,
   runSpans: number[][],
   args: {
@@ -410,6 +608,14 @@ export function fitCurveRun(
 ): paper.Path[] {
   if (runNodes.length < 2 || runSpans.length !== runNodes.length - 1) {
     return [];
+  }
+
+  function isUnconstrainedBoundaryNode(node: {
+    reasonTags?: Set<string>;
+    continuity: string | null;
+  }): boolean {
+    const reasons = new Set(node.reasonTags ?? []);
+    return reasons.has("sharp_corner") || node.continuity === "non-continuous";
   }
 
   const nodePointsXy = runNodes.map((node) =>
@@ -440,6 +646,15 @@ export function fitCurveRun(
   );
 
   const paths: paper.Path[] = [];
+  const boundaryStartFree = isUnconstrainedBoundaryNode(runNodes[0]);
+  const boundaryEndFree = isUnconstrainedBoundaryNode(
+    runNodes[runNodes.length - 1],
+  );
+  const unconstrainedHandles =
+    args.nodeBalanceWeight <= 0 &&
+    args.segmentBalanceWeight <= 0 &&
+    args.g2Weight <= 0;
+
   for (let si = 0; si < segmentPointsXy.length; si += 1) {
     const pointsXy = segmentPointsXy[si];
     const t0 = nodeTangents[si];
@@ -447,12 +662,33 @@ export function fitCurveRun(
     const p0 = nodePointsXy[si];
     const p3 = nodePointsXy[si + 1];
 
-    const seedCubic: Cubic = {
-      p0,
-      p1: [p0[0] + outLen[si] * t0[0], p0[1] + outLen[si] * t0[1]],
-      p2: [p3[0] - inLen[si + 1] * t3[0], p3[1] - inLen[si + 1] * t3[1]],
-      p3,
-    };
+    const segmentFreeStart =
+      !unconstrainedHandles && si === 0 && boundaryStartFree;
+    const segmentFreeEnd =
+      !unconstrainedHandles &&
+      si === segmentPointsXy.length - 1 &&
+      boundaryEndFree;
+
+    let seedCubic: Cubic;
+    if (unconstrainedHandles) {
+      seedCubic = fitSingleCubicUnconstrained(pointsXy, {
+        handleShrinkWeight: args.handleShrinkWeight,
+      });
+    } else if (segmentFreeStart || segmentFreeEnd) {
+      seedCubic = fitSingleCubicWithPartialConstraints(pointsXy, t0, t3, {
+        freeStartHandle: segmentFreeStart,
+        freeEndHandle: segmentFreeEnd,
+        segmentBalanceWeight: args.segmentBalanceWeight,
+        handleShrinkWeight: args.handleShrinkWeight,
+      });
+    } else {
+      seedCubic = {
+        p0,
+        p1: [p0[0] + outLen[si] * t0[0], p0[1] + outLen[si] * t0[1]],
+        p2: [p3[0] - inLen[si + 1] * t3[0], p3[1] - inLen[si + 1] * t3[1]],
+        p3,
+      };
+    }
 
     const [maxError] = segmentMaxError(seedCubic, pointsXy);
     const fitted =
@@ -463,6 +699,9 @@ export function fitCurveRun(
             maxDepth: args.maxSplitDepth,
             segmentBalanceWeight: args.segmentBalanceWeight,
             handleShrinkWeight: args.handleShrinkWeight,
+            unconstrainedHandles,
+            freeStartHandle: segmentFreeStart,
+            freeEndHandle: segmentFreeEnd,
           });
 
     const path = new paper.Path();
