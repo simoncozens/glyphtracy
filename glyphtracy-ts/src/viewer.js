@@ -929,13 +929,19 @@ function getSvgExportDimensions() {
   const width = Math.max(
     1,
     Math.round(
-      rasterWidth || Number(sourceImage.naturalWidth) || Number(sourceImage.width) || 1,
+      rasterWidth ||
+        Number(sourceImage.naturalWidth) ||
+        Number(sourceImage.width) ||
+        1,
     ),
   );
   const height = Math.max(
     1,
     Math.round(
-      rasterHeight || Number(sourceImage.naturalHeight) || Number(sourceImage.height) || 1,
+      rasterHeight ||
+        Number(sourceImage.naturalHeight) ||
+        Number(sourceImage.height) ||
+        1,
     ),
   );
   return { width, height };
@@ -950,7 +956,9 @@ function safeBaseName(name) {
 function downloadFinalSvg() {
   const pathData = state.debugData?.final_path;
   if (!pathData) {
-    setStatus("Nothing to download yet. Upload an image and run vectorization first.");
+    setStatus(
+      "Nothing to download yet. Upload an image and run vectorization first.",
+    );
     return;
   }
 
