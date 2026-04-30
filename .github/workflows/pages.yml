@@ -14,7 +14,7 @@ jobs:
       - name: Upload
         uses: actions/upload-pages-artifact@v4.0.0
         with:
-          path: glyphtracy-ts-web/dist
+          path: glyphtracy-ts/dist
   deploy:
     needs: build
     permissions:
