@@ -6,7 +6,7 @@ The Vectorizer class is highly configurable with parameters for tuning node plac
 
 Usage:
 
-    python -m glyphtracy input_image.png --output output_image.svg --debug-json debug_output.json
+    glyphtracy input_image.png --output output_image.svg --debug-json debug_output.json
 
 The debug JSON file contains a detailed breakdown of the contours, nodes, and segments identified and created during the vectorization process, which can be used for debugging or visualization purposes.
 A debugging viewer is available at debugger/split_debug_viewer.html that can load the debug JSON output and visualize the contours, nodes, and segments interactively.
@@ -580,10 +580,8 @@ def compose_final_path(contour_paths: list[BezPath]) -> BezPath:
     return final_path
 
 
-if __name__ == "__main__":
-    import json
+def main():
     import argparse
-    from pathlib import Path
 
     parser = argparse.ArgumentParser(description="Vectorize an image to SVG path.")
     parser.add_argument("image_path", type=str, help="Path to input image file.")
@@ -699,3 +697,7 @@ if __name__ == "__main__":
         <path d="{d_path}" fill="black" />
     </svg>"""
     Path(args.output).write_text(svg_content, encoding="utf-8")
+
+
+if __name__ == "__main__":
+    main()
