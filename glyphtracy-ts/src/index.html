@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GlyphTracy</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <div id="hover-tooltip" class="tooltip" aria-hidden="true"></div>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <h1>GlyphTracy</h1>
+      </div>
+      <div class="status" id="status">
+        Upload an image to run glyphtracy-ts vectorization.
+      </div>
+    </section>
+
+    <section class="panel toolbar">
+      <div class="field">
+        <label for="image-input">Source PNG/JPEG</label>
+        <input id="image-input" type="file" accept="image/*" />
+      </div>
+      <div class="field">
+        <label for="contour-select">Contour</label>
+        <select id="contour-select"></select>
+      </div>
+      <div class="field">
+        <label for="stage-select">Stage</label>
+        <select id="stage-select"></select>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button id="download-svg" type="button">Download SVG</button>
+      </div>
+    </section>
+
+    <section class="panel controls-panel">
+      <details>
+        <summary>
+          <h2>Vectorizer Controls</h2>
+        </summary>
+
+
+        <div class="controls-header">
+          <div>
+            <p class="controls-copy">
+              Adjust node placement and fitting parameters. Changes rerun the
+              vectorizer on the currently loaded raster.
+            </p>
+          </div>
+          <button id="reset-params" class="secondary-button" type="button">
+            Reset Defaults
+          </button>
+        </div>
+        <div id="param-controls" class="param-grid"></div>
+      </details>
+    </section>
+
+    <section class="grid">
+      <section class="panel">
+        <h2>Source Image</h2>
+        <div class="image-wrap">
+          <img id="source-image" alt="Source raster" />
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Fragment Points</h2>
+        <div class="svg-wrap">
+          <svg id="debug-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Fragment debug view"></svg>
+        </div>
+        <div class="summary" id="summary"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Final Path</h2>
+        <div class="image-wrap">
+          <svg id="final-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Final path overlay"></svg>
+        </div>
+      </section>
+    </section>
+  </main>
+
+</body>
+
+</html>
