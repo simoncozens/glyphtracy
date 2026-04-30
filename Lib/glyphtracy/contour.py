@@ -12,8 +12,7 @@ from dataclasses import dataclass
 import math
 import numpy as np
 
-from glyphtracy.node import Continuity, NodeTransition
-from glyphtracy.utils import is_polyline_window_line_like, normalized
+from glyphtracy.utils import normalized
 
 
 @dataclass
@@ -105,40 +104,6 @@ class Contour:
         dot = float(np.dot(v_in, v_out))
         dot = max(-1.0, min(1.0, dot))
         return float(math.acos(dot))
-
-    def classify_transition(self, index: int, window: int = 6) -> NodeTransition:
-        before = self.slice_before(index, window)
-        after = self.slice_after(index, window)
-        before_line = is_polyline_window_line_like(before)
-        after_line = is_polyline_window_line_like(after)
-        if before_line and after_line:
-            return "line-line"
-        if before_line or after_line:
-            return "curve-line"
-        return "curve-curve"
-
-    def classify_continuity(self, index: int, stride: int = 2) -> Continuity:
-        n = self.size
-        if n < 3:
-            return "G2"
-        prev_i = (index - stride) % n if self.closed else max(0, index - stride)
-        next_i = (index + stride) % n if self.closed else min(n - 1, index + stride)
-        p_prev = self.points_rc[prev_i]
-        p_cur = self.points_rc[index]
-        p_next = self.points_rc[next_i]
-
-        # XXX This is not how you measure continuity!
-        tan_in = normalized(p_cur - p_prev)
-        tan_out = normalized(p_next - p_cur)
-        dot = float(np.dot(tan_in, tan_out))
-        dot = max(-1.0, min(1.0, dot))
-        turn = float(math.acos(dot))
-
-        if turn <= 0.12:
-            return "G2"
-        if turn <= 0.45:
-            return "G1"
-        return "non-continuous"
 
     def iterative_axis_extrema_axes(
         self,

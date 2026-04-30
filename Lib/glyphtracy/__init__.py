@@ -340,7 +340,7 @@ class Vectorizer:
                 reason_tags=candidates[idx],
                 axis_extrema=set(axis_extrema.get(idx, set())),
                 transition=None,
-                continuity=contour.classify_continuity(idx),
+                continuity=None,
             )
             nodes.append(node)
 
@@ -356,9 +356,11 @@ class Vectorizer:
         """Create path segments between nodes, fitting curves as needed."""
 
         def _should_break_curve_run_at_node(node: Node) -> bool:
+            if "non-continuous" == node.continuity:
+                return True
             if "sharp_corner" in node.reason_tags:
                 return True
-            return node.continuity == "non-continuous"
+            return False
 
         def _fit_run_meta(run_meta: list[dict]) -> list[BezPath]:
             run_nodes = [run_meta[0]["start_node"]] + [m["end_node"] for m in run_meta]
@@ -526,26 +528,34 @@ def rounded(point: Point, dp: int = 1) -> Point:
 
 
 def annotate_transitions(nodes: list[Node], segments: list[PathSegment]) -> None:
-    """Set node.transition based on the kind of the full segments on each side."""
-    incoming: dict[int, SegmentKind] = {}
-    outgoing: dict[int, SegmentKind] = {}
+    """Set node transition and continuity from full incoming/outgoing segments."""
+    incoming: dict[int, PathSegment] = {}
+    outgoing: dict[int, PathSegment] = {}
     for seg in segments:
         if seg.end_node.node_id > 0:
-            incoming[seg.end_node.node_id] = seg.kind
+            incoming[seg.end_node.node_id] = seg
         if seg.start_node.node_id > 0:
-            outgoing[seg.start_node.node_id] = seg.kind
+            outgoing[seg.start_node.node_id] = seg
 
     for node in nodes:
-        before_kind = incoming.get(node.node_id)
-        after_kind = outgoing.get(node.node_id)
-        before_line = before_kind == "line"
-        after_line = after_kind == "line"
+        before_seg = incoming.get(node.node_id)
+        after_seg = outgoing.get(node.node_id)
+        before_line = before_seg is not None and before_seg.kind == "line"
+        after_line = after_seg is not None and after_seg.kind == "line"
         if before_line and after_line:
             node.transition = "line-line"
         elif before_line or after_line:
             node.transition = "curve-line"
         else:
             node.transition = "curve-curve"
+
+        if before_seg is None or after_seg is None:
+            node.continuity = "non-continuous"
+            continue
+
+        before_points = node.contour.points_for_indices(before_seg.contour_indices)
+        after_points = node.contour.points_for_indices(after_seg.contour_indices)
+        node.continuity = node.classify_continuity(before_points, after_points)
 
 
 def compose_contour_path(segments: list[PathSegment]) -> BezPath:
