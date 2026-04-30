@@ -103,6 +103,7 @@ class Vectorizer:
         extrema_min_index_gap: int = 3,
         extrema_min_span_points: int = 8,
         extrema_max_iterations: int = 8,
+        contour_level: float = 0.5,
         fit_tolerance: float = 5.0,
         node_balance_weight: float = 0.8,
         segment_balance_weight: float = 0.8,
@@ -120,6 +121,8 @@ class Vectorizer:
             extrema_min_index_gap: Minimum gap between detected extrema nodes (at reference size).
             extrema_min_span_points: Minimum points in extrema search spans (at reference size).
             extrema_max_iterations: Max iterations for iterative extrema search.
+            contour_level: Iso-value threshold for contour extraction (default: 0.5).
+                Lower values include lighter ink, connecting faint joins. Too low picks up noise.
             fit_tolerance: Max error tolerance for Bezier fitting (pixels at reference size).
             node_balance_weight: Weight for incoming/outgoing handle balance.
             segment_balance_weight: Weight for segment-level handle balance.
@@ -152,6 +155,7 @@ class Vectorizer:
         self.handle_shrink_weight = float(handle_shrink_weight)
         self.max_split_depth = int(max_split_depth)
         self.extrema_max_iterations = int(extrema_max_iterations)
+        self.contour_level = float(contour_level)
 
         # Resolution-dependent parameters (scaled by resolution_scale)
         self.fit_tolerance = float(fit_tolerance) * self.resolution_scale
@@ -250,7 +254,7 @@ class Vectorizer:
         """Extract contours from image using skimage."""
         contours: list[Contour] = []
         for contour_id, contour in enumerate(
-            skimage.measure.find_contours(self.image_array, level=0.5)
+            skimage.measure.find_contours(self.image_array, level=self.contour_level)
         ):
             rc = dedupe_closed_contour(np.asarray(contour, dtype=np.float64))
             if rc.shape[0] < 3:
@@ -635,6 +639,14 @@ def main():
         default=8,
         help="Max iterations for iterative extrema search (default: 8).",
     )
+    node_group.add_argument(
+        "--contour-level",
+        type=float,
+        default=0.5,
+        help="Iso-value threshold for contour extraction (default: 0.5). "
+             "Lower values include lighter ink, connecting faint joins. "
+             "Too low picks up paper texture noise.",
+    )
 
     fit_group = parser.add_argument_group("Path fitting parameters")
     fit_group.add_argument(
@@ -683,6 +695,7 @@ def main():
         g2_weight=args.g2_weight,
         handle_shrink_weight=args.handle_shrink_weight,
         max_split_depth=args.max_split_depth,
+        contour_level=args.contour_level,
         sharp_threshold=args.sharp_threshold,
         pixel_tolerance=args.pixel_tolerance,
         extrema_min_index_gap=args.extrema_min_index_gap,

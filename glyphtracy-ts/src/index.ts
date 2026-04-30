@@ -18,6 +18,7 @@ export interface VectorizerOptions {
   extremaMinIndexGap?: number;
   extremaMinSpanPoints?: number;
   extremaMaxIterations?: number;
+  contourLevel?: number;
   fitTolerance?: number;
   nodeBalanceWeight?: number;
   segmentBalanceWeight?: number;
@@ -139,6 +140,7 @@ export class Vectorizer {
   extremaMinIndexGap: number;
   extremaMinSpanPoints: number;
   extremaMaxIterations: number;
+  contourLevel: number;
   fitTolerance: number;
   nodeBalanceWeight: number;
   segmentBalanceWeight: number;
@@ -162,6 +164,7 @@ export class Vectorizer {
     this.handleShrinkWeight = options.handleShrinkWeight ?? 0.05;
     this.maxSplitDepth = options.maxSplitDepth ?? 5;
     this.extremaMaxIterations = options.extremaMaxIterations ?? 8;
+    this.contourLevel = options.contourLevel ?? 0.5;
 
     this.fitTolerance = (options.fitTolerance ?? 5) * this.resolutionScale;
     this.pixelTolerance =
@@ -177,7 +180,7 @@ export class Vectorizer {
   }
 
   extractContours(): Contour[] {
-    let raw = isoLines(this.imageArray, 0.5) ?? [];
+    let raw = isoLines(this.imageArray, this.contourLevel) ?? [];
     // First one is always the image boundary, skip it
     raw = raw.slice(1);
     const contours: Contour[] = [];
