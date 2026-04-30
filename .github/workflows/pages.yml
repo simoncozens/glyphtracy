@@ -1,0 +1,30 @@
+name: Build GH Pages
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build
+        run: cd glyphtracy-ts; npm install && npm run build:web
+      - name: Upload
+        uses: actions/upload-pages-artifact@v4.0.0
+        with:
+          path: glyphtracy-ts-web/dist
+  deploy:
+    needs: build
+    permissions:
+      pages: write # to deploy to Pages
+      id-token: write # to verify the deployment originates from an appropriate source
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
