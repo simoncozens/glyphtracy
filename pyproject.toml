@@ -1,0 +1,20 @@
+
+[build-system]
+requires = ["setuptools>=69.5.1", "setuptools_scm[toml]>=8.1.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["Lib"]
+
+[project]
+name = "glyphtracy"
+description = "A tool to convert raster images of glyphs into vector paths using Bezier curves."
+readme = "README.md"
+authors = [{ name = "Simon Cozens", email = "simon@simon-cozens.org" }]
+dynamic = ["version"]
+dependencies = ["scikit-image", "numpy", "kurbopy", "Pillow"]
+license = "Apache-2.0"
+license-files = ["LICENSE.txt"]
+
+[project.scripts]
+glyphtracy = "glyphtracy.__init__:main"
