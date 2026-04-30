@@ -1,18 +1,21 @@
-from glyphtracy.utils import is_basically_a_line
-from glyphtracy.utils import span_indices_closed
-from glyphtracy.utils import split_open_span_indices
-from glyphtracy.utils import dedupe_open_indices
-from glyphtracy.utils import prune_open_split_positions
-from glyphtracy.utils import dedupe_cyclic_indices
-from glyphtracy.utils import axis_prominent_extrema_indices
-from glyphtracy.utils import smooth_signal
-from glyphtracy.utils import global_axis_extrema_axes
-from glyphtracy.node import AxisExtremaTag
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
+
 import numpy as np
 
-from glyphtracy.utils import normalized
+from glyphtracy.node import AxisExtremaTag
+from glyphtracy.utils import (
+    axis_prominent_extrema_indices,
+    dedupe_cyclic_indices,
+    dedupe_open_indices,
+    global_axis_extrema_axes,
+    is_basically_a_line,
+    normalized,
+    prune_open_split_positions,
+    smooth_signal,
+    span_indices_closed,
+    split_open_span_indices,
+)
 
 
 @dataclass

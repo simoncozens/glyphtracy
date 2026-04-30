@@ -27,13 +27,11 @@ Programmatic usage:
     # debug_data is a structured dictionary containing details of contours, nodes, and segments for debugging/visualization
 """
 
-from typing import Tuple
-from typing import TypedDict
 import json
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple, TypedDict
 
 import numpy as np
 import skimage.measure
@@ -41,14 +39,14 @@ from kurbopy import BezPath, CubicBez, Line, Point
 from PIL import Image
 
 from glyphtracy.contour import Contour
-from glyphtracy.node import AxisExtremaTag, Node, SegmentKind
 from glyphtracy.fit import fit_curve_run
+from glyphtracy.node import AxisExtremaTag, Node, SegmentKind
 from glyphtracy.utils import (
-    spans_between_anchors_closed,
     cyclic_distance,
-    span_indices_closed,
     dedupe_closed_contour,
     is_basically_a_line,
+    span_indices_closed,
+    spans_between_anchors_closed,
 )
 
 
