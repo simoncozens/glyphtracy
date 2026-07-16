@@ -4,6 +4,88 @@ import numpy as np
 
 from glyphtracy.node import AxisExtremaTag
 
+# ---------------------------------------------------------------------------
+# Contour extraction – try skimage, fall back to vendored MarchingNumPy
+# ---------------------------------------------------------------------------
+_HAS_SKIMAGE: bool
+try:
+    import skimage.measure as _sk_measure
+
+    _HAS_SKIMAGE = True
+except ImportError:
+    _HAS_SKIMAGE = False
+    _sk_measure = None  # type: ignore[assignment]
+
+
+def find_contours(
+    image_array: np.ndarray,
+    level: float = 0.5,
+) -> list[np.ndarray]:
+    """Extract iso-valued contours from a 2-D image array.
+
+    Tries ``skimage.measure.find_contours`` first; if scikit-image is not
+    available it falls back to the vendored ``MarchingNumPy`` library (which
+    uses only NumPy internals).
+
+    Returns a list of *(N, 2)* float64 arrays in *(row, column)* order,
+    matching skimage's convention.  Closed contours include the duplicated
+    start point as their last entry.
+    """
+    if _HAS_SKIMAGE and _sk_measure is not None:
+        return list(_sk_measure.find_contours(image_array, level=level))
+
+    # --- NumPy-only fallback via MarchingNumPy ---
+    from glyphtracy.MarchingNumPy import marching_squares as _mn_ms
+
+    vertices, geometry = _mn_ms(image_array, level=level)
+    vertices = np.asarray(vertices, dtype=np.float64)
+
+    if vertices.shape[0] == 0:
+        return []
+
+    n_verts = vertices.shape[0]
+
+    # Build adjacency from geometry segments
+    adj: list[list[int]] = [[] for _ in range(n_verts)]
+    for seg in geometry:
+        i, j = int(seg[0]), int(seg[1])
+        adj[i].append(j)
+        adj[j].append(i)
+
+    visited: set[int] = set()
+    contours: list[np.ndarray] = []
+
+    for start in range(n_verts):
+        if start in visited or not adj[start]:
+            continue
+
+        # Closed contour (most common) – every vertex has degree 2
+        poly: list[int] = [start]
+        visited.add(start)
+        curr = adj[start][0]
+        prev = start
+        while curr != start:
+            if curr in visited:
+                break
+            visited.add(curr)
+            poly.append(curr)
+            nxt_pts = [n for n in adj[curr] if n != prev]
+            if not nxt_pts:
+                break
+            nxt = nxt_pts[0]
+            prev, curr = curr, nxt
+
+        if curr == start:
+            # Closed loop – duplicate first point at end (skimage convention)
+            coords = list(vertices[poly])
+            coords.append(coords[0])
+            contours.append(np.asarray(coords, dtype=np.float64))
+        else:
+            # Open polyline (should be rare for find_contours)
+            contours.append(np.asarray(vertices[poly], dtype=np.float64))
+
+    return contours
+
 
 def span_indices_closed(start: int, end: int, size: int) -> list[int]:
     if start <= end:

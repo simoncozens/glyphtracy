@@ -38,4 +38,4 @@ final_path, debug_data = vectorizer.run()
 
 ## License
 
-Glyphtracy is licensed under the Apache License 2.0. See the LICENSE.txt file for details.
+Glyphtracy is licensed under the Apache License 2.0, with the exception of the `Lib/glyphtracy/MarchingNumPy` directory which is a vendored copy of [MarchingNumPy](https://github.com/alistairboyer/MarchingNumPy) licensed under the MIT license. See the LICENSE.txt file for details.

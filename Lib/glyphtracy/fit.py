@@ -4,7 +4,10 @@ from dataclasses import dataclass
 from typing import Any, Sequence
 
 import numpy as np
-from kurbopy import BezPath, CubicBez, Point
+try:
+    from kurbopy import BezPath, CubicBez, Point
+except ImportError:
+    from glyphtracy.minikurbo import BezPath, CubicBez, Point
 
 
 @dataclass

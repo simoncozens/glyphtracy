@@ -34,9 +34,12 @@ from pathlib import Path
 from typing import Optional, Tuple, TypedDict
 
 import numpy as np
-import skimage.measure
-from kurbopy import BezPath, CubicBez, Line, Point
-from PIL import Image
+try:
+    from kurbopy import BezPath, CubicBez, Line, Point
+except ImportError:
+    from glyphtracy.minikurbo import BezPath, CubicBez, Line, Point
+
+# from PIL import Image
 
 from glyphtracy.contour import Contour
 from glyphtracy.fit import fit_curve_run
@@ -44,6 +47,7 @@ from glyphtracy.node import AxisExtremaTag, Node, SegmentKind
 from glyphtracy.utils import (
     cyclic_distance,
     dedupe_closed_contour,
+    find_contours,
     is_basically_a_line,
     span_indices_closed,
     spans_between_anchors_closed,
@@ -133,6 +137,7 @@ class Vectorizer:
         """
         # Load image
         if isinstance(image_source, str):
+            import PIL.Image as Image
             self.image_array = 1.0 - (
                 np.asarray(Image.open(image_source).convert("L")) / 255.0
             )
@@ -251,10 +256,10 @@ class Vectorizer:
         )
 
     def extract_contours(self) -> list[Contour]:
-        """Extract contours from image using skimage."""
+        """Extract contours from image using skimage (or numpy-only fallback)."""
         contours: list[Contour] = []
         for contour_id, contour in enumerate(
-            skimage.measure.find_contours(self.image_array, level=self.contour_level)
+            find_contours(self.image_array, level=self.contour_level)
         ):
             rc = dedupe_closed_contour(np.asarray(contour, dtype=np.float64))
             if rc.shape[0] < 3:
@@ -573,12 +578,14 @@ def compose_contour_path(segments: list[PathSegment]) -> BezPath:
     for segment in segments:
         for seg in segment.bezpath.segments():
             if isinstance(seg, Line):
-                contour_path.line_to(seg.end())
+                l: Line = seg # This is just to shut up the type checker
+                contour_path.line_to(l.end())
             elif isinstance(seg, CubicBez):
+                c: CubicBez = seg
                 contour_path.curve_to(
-                    seg.p1,
-                    seg.p2,
-                    seg.p3,
+                    c.p1,
+                    c.p2,
+                    c.p3,
                 )
     return contour_path
 
